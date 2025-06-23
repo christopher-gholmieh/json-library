@@ -10,36 +10,13 @@
 #include "json-library-types.h"
 
 // Prototypes:
+static void stringify_json_node_internal(json_node_t* json_node, string_builder_t* string_builder, int indentation_level);
 char* stringify_json_node(json_node_t* json_node);
+
 int write_json_to_file(json_node_t* json_node, char* file_path);
 
 // Definition:
-char* stringify_json_node(json_node_t* json_node) {
-    // Validation:
-    if (json_node == NULL) {
-        // Message:
-        fprintf(stderr, "[!] Unable to perform stringify operation on NULL JSON node.\n");
-
-        // Logic:
-        return NULL;
-    }
-
-    // Variables (Assignment);
-    // Builder:
-    string_builder_t* string_builder = initialize_string_builder();
-    
-    if (string_builder == NULL) {
-        // Message:
-        fprintf(stderr, "[!] Unable to create string builder.\n");
-
-        // Logic:
-        return NULL;
-    }
-
-    // Indent:
-    int indentation_level = 0;
-
-    // Logic:
+static void stringify_json_node_internal(json_node_t* json_node, string_builder_t* string_builder, int indentation_level) {
     switch (json_node->json_type) {
         case JSON_BOOLEAN: {
             // Variables (Assignment):
@@ -56,47 +33,25 @@ char* stringify_json_node(json_node_t* json_node) {
             // Object:
             json_object_t* json_object = (json_object_t*) json_node->pointer;
 
-            // Logic:
-            indentation_level++;
-
             string_builder_append_data(string_builder, "{\n");
-            string_builder_append_indent(string_builder, indentation_level);
 
             for (size_t iterator = 0; iterator < json_object->length; iterator++) {
+                string_builder_append_indent(string_builder, indentation_level + 1);
                 string_builder_append_data(string_builder, "\"");
                 string_builder_append_data(string_builder, json_object->keys[iterator]);
                 string_builder_append_data(string_builder, "\": ");
 
-                // Variables (Assignment):
-                // Representation:
-                char* representation = stringify_json_node(json_object->values[iterator]);
+                stringify_json_node_internal(json_object->values[iterator], string_builder, indentation_level + 1);
 
-                if (representation == NULL) {
-                    // Message:
-                    fprintf(stderr, "[!] Invalid JSON detected.\n");
-
-                    // Memory:
-                    destruct_string_builder(string_builder);
-
-                    // Logic:
-                    return NULL;
-                }
-
-                // Logic:
-                string_builder_append_data(string_builder, representation);
-
-                // Memory:
-                free(representation);
-
-                // Logic:
                 if (iterator != json_object->length - 1) {
-                    string_builder_append_data(string_builder, ",\n");
-                    string_builder_append_indent(string_builder, indentation_level);
+                    string_builder_append_data(string_builder, ",");
                 }
+
+                string_builder_append_data(string_builder ,"\n");
             }
 
-            string_builder_append_data(string_builder, "\n}");
-            indentation_level--;
+            string_builder_append_indent(string_builder, indentation_level);
+            string_builder_append_data(string_builder, "}");
 
             break;
         }
@@ -117,7 +72,7 @@ char* stringify_json_node(json_node_t* json_node) {
                 destruct_string_builder(string_builder);
 
                 // Logic:
-                return NULL;
+                return;
             }
 
             // Logic:
@@ -150,37 +105,50 @@ char* stringify_json_node(json_node_t* json_node) {
             json_array_t* json_array = (json_array_t*) json_node->pointer;
 
             // Logic:
-            string_builder_append_data(string_builder, "[");
+            string_builder_append_data(string_builder, "[\n");
 
             for (size_t iterator = 0; iterator < json_array->length; iterator++) {
-                // Variables (Assignment):
-                // Representation:
-                char* representation = stringify_json_node(json_array->values[iterator]);
-
-                if (representation == NULL) {
-                    // Message:
-                    fprintf(stderr, "[!] Invalid JSON detected.\n");
-
-                    // Memory:
-                    destruct_string_builder(string_builder);
-
-                    // Logic:
-                    return NULL;
-                }
-
                 // Logic:
-                string_builder_append_data(string_builder, representation);
+                string_builder_append_indent(string_builder, indentation_level + 1);
+                stringify_json_node_internal(json_array->values[iterator], string_builder, indentation_level + 1);
 
                 if (iterator != json_array->length - 1) {
                     string_builder_append_data(string_builder, ", ");
                 }
             }
 
+            string_builder_append_indent(string_builder, indentation_level);
             string_builder_append_data(string_builder, "]");
 
             break;
         }
     }
+}
+
+char* stringify_json_node(json_node_t* json_node) {
+    // Validation:
+    if (json_node == NULL) {
+        // Message:
+        fprintf(stderr, "[!] Unable to perform stringify operation on NULL JSON node.\n");
+
+        // Logic:
+        return NULL;
+    }
+
+    // Variables (Assignment);
+    // Builder:
+    string_builder_t* string_builder = initialize_string_builder();
+    
+    if (string_builder == NULL) {
+        // Message:
+        fprintf(stderr, "[!] Unable to create string builder.\n");
+
+        // Logic:
+        return NULL;
+    }
+
+    // Logic:
+    stringify_json_node_internal(json_node, string_builder, 0);
 
     // Variables (Assignment):
     // Data:
